@@ -16,8 +16,8 @@ class SportViewModel : ViewModel() {
 
     private var nextBookingId = 0L
 
-    fun addBooking(venue: SportVenue, dateTime: LocalDateTime, sportType: String) {
-        try {
+    fun addBooking(venue: SportVenue, dateTime: LocalDateTime, sportType: String): Long {
+        return try {
             val booking = Booking(
                 id = nextBookingId++,
                 venue = venue,
@@ -25,6 +25,7 @@ class SportViewModel : ViewModel() {
                 sportType = sportType
             )
             _bookings.update { it + booking }
+            booking.id // Kembalikan ID booking yang baru dibuat
         } catch (e: Exception) {
             Log.e("SportViewModel", "Error creating booking: ${e.message}", e)
             throw e

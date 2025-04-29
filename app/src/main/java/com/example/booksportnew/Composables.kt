@@ -25,50 +25,10 @@ import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeParseException
 
-@Composable
-fun SportApp(vm: SportViewModel = viewModel()) {
-    val navController = rememberNavController()
-    val venues by vm.venues.collectAsState()
-    val bookings by vm.bookings.collectAsState()
-
-    NavHost(navController = navController, startDestination = "list") {
-        composable("list") {
-            VenueListScreen(venues = venues) { venue ->
-                navController.navigate("form/${venue.id}")
-            }
-        }
-        composable(
-            "form/{venueId}",
-            arguments = listOf(navArgument("venueId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("venueId")?.toLongOrNull()
-            val venue = venues.find { it.id == id }
-            venue?.let {
-                BookingFormScreen(venue = it, onBook = { date, time, sport ->
-                    try {
-                        val dt = LocalDateTime.parse("${date}T${time}", DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                        vm.addBooking(it, dt, sport)
-                        navController.navigate("confirm/${bookings.size - 1}")
-                    } catch (e: Exception) {
-                        Log.e("SportApp", "Date parsing error: ${e.message}", e)
-                        // Show error to user
-                    }
-                }, onCancel = { navController.popBackStack() })
-            }
-        }
-        composable(
-            "confirm/{bookingId}",
-            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val bid = backStackEntry.arguments?.getString("bookingId")?.toIntOrNull()
-            val booking = bookings.getOrNull(bid ?: -1)
-            booking?.let {
-                ConfirmationScreen(booking = it)
-            }
-        }
-    }
-}
 
 @Composable
 fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
@@ -103,6 +63,111 @@ fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
 }
 
 @Composable
+fun SportApp(vm: SportViewModel = viewModel()) {
+    val navController = rememberNavController()
+    val venues by vm.venues.collectAsState()
+    val bookings by vm.bookings.collectAsState()
+    val context = LocalContext.current // <-- Tambahkan ini
+
+    NavHost(navController = navController, startDestination = "list") {
+        composable("list") {
+            VenueListScreen(venues = venues) { venue ->
+                navController.navigate("form/${venue.id}")
+            }
+        }
+        composable(
+            "form/{venueId}",
+            arguments = listOf(navArgument("venueId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("venueId")?.toLongOrNull()
+            val venue = venues.find { it.id == id }
+            venue?.let {
+                BookingFormScreen(
+                    venue = it,
+                    onBook = { date, time, sport ->
+                        try {
+                            val dt = LocalDateTime.parse("${date}T${time}")
+                            val bookingId = vm.addBooking(it, dt, sport)
+                            navController.navigate("confirm/$bookingId")
+                        } catch (e: Exception) {
+                        }
+                    },
+                    onCancel = { navController.popBackStack() }
+                )
+            }
+        }
+        composable(
+            "confirm/{bookingId}",
+            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val bid = backStackEntry.arguments?.getString("bookingId")?.toLongOrNull()
+            val booking = bookings.firstOrNull { it.id == bid }
+            if (booking != null) {
+                ConfirmationScreen(
+                    booking = booking,
+                    onDismiss = { navController.popBackStack("list", inclusive = false) }
+                )
+            } else {
+                ErrorScreen("Pemesanan tidak ditemukan")
+            }
+        }
+    }
+}
+@Composable
+fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "✅ Pemesanan Berhasil",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(32.dp))
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Detail Pemesanan", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(16.dp))
+                DetailItem("Venue", booking.venue.name)
+                DetailItem("Lokasi", booking.venue.location)
+                DetailItem("Olahraga", booking.sportType)
+                DetailItem(
+                    "Waktu",
+                    booking.dateTime.format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))
+                )
+            }
+        }
+
+        Spacer(Modifier.height(32.dp))
+        Button(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Kembali ke Daftar Venue")
+        }
+    }
+}
+
+@Composable
+private fun DetailItem(label: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+
+@Composable
 fun BookingFormScreen(
     venue: SportVenue,
     onBook: (String, String, String) -> Unit,
@@ -111,76 +176,116 @@ fun BookingFormScreen(
     var date by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
     var sport by remember { mutableStateOf("") }
+    var dateError by remember { mutableStateOf<String?>(null) }
+    var timeError by remember { mutableStateOf<String?>(null) }
+    var sportError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Pesan: ${venue.name}", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
+
+        // Field Tanggal
         OutlinedTextField(
             value = date,
-            onValueChange = { date = it },
+            onValueChange = { date = it; dateError = null },
             label = { Text("Tanggal (YYYY-MM-DD)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = dateError != null,
+            supportingText = { dateError?.let { Text(text = it) } }
         )
-        Spacer(Modifier.height(8.dp))
+
+        // Field Waktu
         OutlinedTextField(
             value = time,
-            onValueChange = { time = it },
+            onValueChange = { time = it; timeError = null },
             label = { Text("Waktu (HH:MM:SS)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = timeError != null,
+            supportingText = { timeError?.let { Text(text = it) } }
         )
-        Spacer(Modifier.height(8.dp))
+
+        // Field Olahraga
         OutlinedTextField(
             value = sport,
-            onValueChange = { sport = it },
+            onValueChange = { sport = it; sportError = null },
             label = { Text("Jenis Olahraga") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = sportError != null,
+            supportingText = { sportError?.let { Text(text = it) } }
         )
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                if (date.isBlank() || time.isBlank() || sport.isBlank()) {
-                    Toast.makeText(context, "Semua field wajib diisi", Toast.LENGTH_SHORT).show()
-                } else {
-                    try {
-                        // Validate date format
-                        if (!date.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
-                            Toast.makeText(context, "Format tanggal harus YYYY-MM-DD", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
-                        // Validate time format
-                        if (!time.matches(Regex("\\d{2}:\\d{2}:\\d{2}"))) {
-                            Toast.makeText(context, "Format waktu harus HH:MM:SS", Toast.LENGTH_SHORT).show()
-                            return@Button
-                        }
 
+        Spacer(Modifier.height(16.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    // Reset error
+                    dateError = null
+                    timeError = null
+                    sportError = null
+
+                    var hasError = false
+
+                    // Validasi Tanggal
+                    if (date.isBlank()) {
+                        dateError = "Wajib diisi"
+                        hasError = true
+                    } else {
+                        try {
+                            val inputDate = LocalDate.parse(date, DateTimeFormatter.ISO_DATE)
+                            if (inputDate.isBefore(LocalDate.now())) {
+                                dateError = "Tidak boleh di masa lalu"
+                                hasError = true
+                            }
+                        } catch (e: DateTimeParseException) {
+                            dateError = "Format tidak valid"
+                            hasError = true
+                        }
+                    }
+
+                    // Validasi Waktu
+                    if (time.isBlank()) {
+                        timeError = "Wajib diisi"
+                        hasError = true
+                    } else {
+                        try {
+                            LocalTime.parse(time, DateTimeFormatter.ISO_TIME)
+                        } catch (e: DateTimeParseException) {
+                            timeError = "Format tidak valid"
+                            hasError = true
+                        }
+                    }
+
+                    // Validasi Olahraga
+                    if (sport.isBlank()) {
+                        sportError = "Wajib diisi"
+                        hasError = true
+                    }
+
+                    if (hasError) return@Button
+
+                    try {
+                        val dt = LocalDateTime.parse("${date}T${time}")
+                        if (dt.isBefore(LocalDateTime.now())) {
+                            Toast.makeText(context, "Waktu tidak boleh di masa lalu", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         onBook(date, time, sport)
                     } catch (e: Exception) {
-                        Toast.makeText(context, "Format tanggal/waktu tidak valid: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Waktu tidak valid", Toast.LENGTH_SHORT).show()
                     }
-                }
-            }, modifier = Modifier.weight(1f)) {
+                },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Pesan")
             }
+
             OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
                 Text("Batal")
             }
         }
-    }
-}
-
-@Composable
-fun ConfirmationScreen(booking: Booking) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Konfirmasi Pemesanan", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(16.dp))
-        Text("Venue: ${booking.venue.name}")
-        Text("Lokasi: ${booking.venue.location}")
-        Text("Olahraga: ${booking.sportType}")
-        Text("Waktu: ${booking.dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
-        Spacer(Modifier.height(24.dp))
-        Text("Pemesanan berhasil!", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
     }
 }
