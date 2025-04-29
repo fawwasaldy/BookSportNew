@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,11 +18,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
@@ -29,6 +35,11 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeParseException
 
+// Definisi rute navigasi utama
+sealed class Screen(val route: String, val title: String) {
+    object Book : Screen("book", "Book")
+    object History : Screen("history", "History")
+}
 
 @Composable
 fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
@@ -67,52 +78,203 @@ fun SportApp(vm: SportViewModel = viewModel()) {
     val navController = rememberNavController()
     val venues by vm.venues.collectAsState()
     val bookings by vm.bookings.collectAsState()
-    val context = LocalContext.current // <-- Tambahkan ini
 
-    NavHost(navController = navController, startDestination = "list") {
-        composable("list") {
-            VenueListScreen(venues = venues) { venue ->
-                navController.navigate("form/${venue.id}")
+    // Untuk mengetahui rute yang sedang aktif
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    // List tab utama
+    val items = listOf(
+        Screen.Book,
+        Screen.History
+    )
+
+    Scaffold(
+        bottomBar = {
+            // NavigationBar hanya ditampilkan pada rute utama
+            val showBottomBar = currentRoute in listOf("list", "history")
+
+            if (showBottomBar) {
+                NavigationBar {
+                    items.forEach { screen ->
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    imageVector = when (screen) {
+                                        Screen.Book -> Icons.Filled.Home
+                                        Screen.History -> Icons.Filled.List
+                                    },
+                                    contentDescription = screen.title
+                                )
+                            },
+                            label = { Text(screen.title) },
+                            selected = when (screen) {
+                                Screen.Book -> currentRoute == "list"
+                                Screen.History -> currentRoute == "history"
+                            },
+                            onClick = {
+                                when (screen) {
+                                    Screen.Book -> {
+                                        if (currentRoute != "list") {
+                                            navController.navigate("list") {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    }
+                                    Screen.History -> {
+                                        if (currentRoute != "history") {
+                                            navController.navigate("history") {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
-        composable(
-            "form/{venueId}",
-            arguments = listOf(navArgument("venueId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("venueId")?.toLongOrNull()
-            val venue = venues.find { it.id == id }
-            venue?.let {
-                BookingFormScreen(
-                    venue = it,
-                    onBook = { date, time, sport ->
-                        try {
-                            val dt = LocalDateTime.parse("${date}T${time}")
-                            val bookingId = vm.addBooking(it, dt, sport)
-                            navController.navigate("confirm/$bookingId")
-                        } catch (e: Exception) {
-                        }
-                    },
-                    onCancel = { navController.popBackStack() }
-                )
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = "list",
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            // Halaman daftar venue (awal)
+            composable("list") {
+                VenueListScreen(venues = venues) { venue ->
+                    navController.navigate("form/${venue.id}")
+                }
             }
-        }
-        composable(
-            "confirm/{bookingId}",
-            arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val bid = backStackEntry.arguments?.getString("bookingId")?.toLongOrNull()
-            val booking = bookings.firstOrNull { it.id == bid }
-            if (booking != null) {
-                ConfirmationScreen(
-                    booking = booking,
-                    onDismiss = { navController.popBackStack("list", inclusive = false) }
-                )
-            } else {
-                ErrorScreen("Pemesanan tidak ditemukan")
+
+            // Halaman form pemesanan
+            composable(
+                "form/{venueId}",
+                arguments = listOf(navArgument("venueId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("venueId")?.toLongOrNull()
+                val venue = venues.find { it.id == id }
+                venue?.let {
+                    BookingFormScreen(
+                        venue = it,
+                        onBook = { date, time, sport ->
+                            try {
+                                val dt = LocalDateTime.parse("${date}T${time}")
+                                val bookingId = vm.addBooking(it, dt, sport)
+                                navController.navigate("confirm/$bookingId")
+                            } catch (e: Exception) {
+                                // Error handling
+                            }
+                        },
+                        onCancel = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            // Halaman konfirmasi pemesanan
+            composable(
+                "confirm/{bookingId}",
+                arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val bid = backStackEntry.arguments?.getString("bookingId")?.toLongOrNull()
+                val booking = bookings.firstOrNull { it.id == bid }
+                if (booking != null) {
+                    ConfirmationScreen(
+                        booking = booking,
+                        onDismiss = { navController.popBackStack("list", inclusive = false) }
+                    )
+                } else {
+                    ErrorScreen("Pemesanan tidak ditemukan")
+                }
+            }
+
+            // Halaman riwayat pemesanan (baru)
+            composable("history") {
+                BookingHistoryScreen(bookings = bookings)
             }
         }
     }
 }
+
+@Composable
+fun BookingHistoryScreen(bookings: List<Booking>) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text(
+            "Riwayat Pemesanan",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (bookings.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Belum ada pemesanan",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            LazyColumn {
+                items(bookings.sortedByDescending { it.dateTime }) { booking ->
+                    BookingHistoryItem(booking)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BookingHistoryItem(booking: Booking) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(
+                model = booking.venue.imageRes,
+                contentDescription = booking.venue.name,
+                modifier = Modifier.size(80.dp).padding(8.dp),
+                contentScale = ContentScale.Crop,
+                error = painterResource(id = R.drawable.ic_error_image)
+            )
+
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text(
+                    booking.venue.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    booking.sportType,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Lokasi: ${booking.venue.location}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "Waktu: ${booking.dateTime.format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
     Column(
