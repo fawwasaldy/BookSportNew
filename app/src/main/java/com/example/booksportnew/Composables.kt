@@ -74,27 +74,28 @@ fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
                     it.location.contains(searchQuery.trim(), ignoreCase = true) ||
                     it.address.contains(searchQuery.trim(), ignoreCase = true)
         }
-
-        LazyColumn {
-            items(filteredVenues) { venue ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    onClick = { onSelect(venue) }
-                )
-                {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(
-                            model = venue.imageRes,
-                            contentDescription = venue.name,
-                            modifier = Modifier.size(80.dp).padding(8.dp),
-                            contentScale = ContentScale.Crop,
-                            error = painterResource(id = R.drawable.ic_error_image)
-                        )
-                        Column(modifier = Modifier.padding(8.dp)) {
-                            Text(venue.name, style = MaterialTheme.typography.bodyLarge)
-                            Text(venue.location, style = MaterialTheme.typography.bodySmall)
+        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+            LazyColumn {
+                items(filteredVenues) { venue ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        onClick = { onSelect(venue) }
+                    )
+                    {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(
+                                model = venue.imageRes,
+                                contentDescription = venue.name,
+                                modifier = Modifier.size(80.dp).padding(8.dp),
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(id = R.drawable.ic_error_image)
+                            )
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text(venue.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(venue.location, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }
@@ -262,6 +263,7 @@ fun SportApp(vm: SportViewModel = viewModel()) {
 @Composable
 fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit = {}) {
     var searchQuery by remember { mutableStateOf("") }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             "Riwayat Pemesanan",
@@ -287,26 +289,27 @@ fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit
             it.venue.name.contains(searchQuery.trim(), ignoreCase = true) ||
                     it.sportType.contains(searchQuery.trim(), ignoreCase = true)
         }
-
-        if (filteredBookings.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "Belum ada pemesanan",
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            LazyColumn {
-                items(filteredBookings) { booking ->
-                    BookingHistoryItem(
-                        booking = booking,
-                        onClick = { onBookingClick(booking.id) }
+        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+            if (filteredBookings.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Belum ada pemesanan",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            } else {
+                LazyColumn {
+                    items(filteredBookings) { booking ->
+                        BookingHistoryItem(
+                            booking = booking,
+                            onClick = { onBookingClick(booking.id) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -318,8 +321,7 @@ fun BookingHistoryItem(booking: Booking, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        onClick = onClick
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
