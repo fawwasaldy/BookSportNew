@@ -33,7 +33,6 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: Exception) {
             Log.e("MainActivity", "Fatal error during initialization: ${e.message}", e)
-            // Last resort handling
         }
     }
 }

@@ -35,7 +35,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeParseException
 
-// Definisi rute navigasi utama
 sealed class Screen(val route: String, val title: String) {
     object Book : Screen("book", "Book")
     object History : Screen("history", "History")
@@ -79,11 +78,9 @@ fun SportApp(vm: SportViewModel = viewModel()) {
     val venues by vm.venues.collectAsState()
     val bookings by vm.bookings.collectAsState()
 
-    // Untuk mengetahui rute yang sedang aktif
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // List tab utama
     val items = listOf(
         Screen.Book,
         Screen.History
@@ -91,7 +88,6 @@ fun SportApp(vm: SportViewModel = viewModel()) {
 
     Scaffold(
         bottomBar = {
-            // NavigationBar hanya ditampilkan pada rute utama
             val showBottomBar = currentRoute in listOf("list", "history")
 
             if (showBottomBar) {
@@ -149,14 +145,12 @@ fun SportApp(vm: SportViewModel = viewModel()) {
             startDestination = "list",
             modifier = Modifier.padding(innerPadding)
         ) {
-            // Halaman daftar venue (awal)
             composable("list") {
                 VenueListScreen(venues = venues) { venue ->
                     navController.navigate("form/${venue.id}")
                 }
             }
 
-            // Halaman form pemesanan
             composable(
                 "form/{venueId}",
                 arguments = listOf(navArgument("venueId") { type = NavType.StringType })
@@ -166,13 +160,22 @@ fun SportApp(vm: SportViewModel = viewModel()) {
                 venue?.let {
                     BookingFormScreen(
                         venue = it,
-                        onBook = { date, time, sport ->
+                        onBook = { date, startTime, endTime, sport, fullName, email, phone ->
                             try {
-                                val dt = LocalDateTime.parse("${date}T${time}")
-                                val bookingId = vm.addBooking(it, dt, sport)
+                                val startDateTime = LocalDateTime.parse("${date}T${startTime}")
+                                val endDateTime = LocalDateTime.parse("${date}T${endTime}")
+                                val bookingId = vm.addBooking(
+                                    venue = it,
+                                    dateTime = startDateTime,
+                                    endDateTime = endDateTime,
+                                    sportType = sport,
+                                    fullName = fullName,
+                                    email = email,
+                                    phone = phone
+                                )
                                 navController.navigate("confirm/$bookingId")
                             } catch (e: Exception) {
-                                // Error handling
+                                Log.e("SportApp", "Error during booking: ${e.message}", e)
                             }
                         },
                         onCancel = { navController.popBackStack() }
@@ -180,7 +183,6 @@ fun SportApp(vm: SportViewModel = viewModel()) {
                 }
             }
 
-            // Halaman konfirmasi pemesanan
             composable(
                 "confirm/{bookingId}",
                 arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
@@ -197,7 +199,6 @@ fun SportApp(vm: SportViewModel = viewModel()) {
                 }
             }
 
-            // Halaman riwayat pemesanan (baru)
             composable("history") {
                 BookingHistoryScreen(bookings = bookings)
             }
@@ -267,7 +268,15 @@ fun BookingHistoryItem(booking: Booking) {
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
-                    "Waktu: ${booking.dateTime.format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))}",
+                    "Tanggal: ${booking.dateTime.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "Waktu: ${booking.dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${booking.endDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    "Nama: ${booking.fullName}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -284,7 +293,7 @@ fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "✅ Pemesanan Berhasil",
+            "Pemesanan Berhasil",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
@@ -332,44 +341,126 @@ private fun DetailItem(label: String, value: String) {
 @Composable
 fun BookingFormScreen(
     venue: SportVenue,
-    onBook: (String, String, String) -> Unit,
+    onBook: (String, String, String, String, String, String, String) -> Unit,
     onCancel: () -> Unit
 ) {
+    // Booking information
     var date by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
+    var startTime by remember { mutableStateOf("") }
+    var endTime by remember { mutableStateOf("") }
     var sport by remember { mutableStateOf("") }
+
+    // Personal information
+    var fullName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+
+    // Error states
     var dateError by remember { mutableStateOf<String?>(null) }
-    var timeError by remember { mutableStateOf<String?>(null) }
+    var startTimeError by remember { mutableStateOf<String?>(null) }
+    var endTimeError by remember { mutableStateOf<String?>(null) }
     var sportError by remember { mutableStateOf<String?>(null) }
+    var fullNameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+
     val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Pesan: ${venue.name}", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(16.dp))
+
+        // Personal Information Section
+        Text(
+            "Personal Information",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
         Spacer(Modifier.height(8.dp))
 
-        // Field Tanggal
+        // Full Name Field
+        OutlinedTextField(
+            value = fullName,
+            onValueChange = { fullName = it; fullNameError = null },
+            label = { Text("Full Name") },
+            modifier = Modifier.fillMaxWidth(),
+            isError = fullNameError != null,
+            supportingText = { fullNameError?.let { Text(text = it) } }
+        )
+        Spacer(Modifier.height(8.dp))
+
+        // Email Field
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it; emailError = null },
+            label = { Text("Email Address") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth(),
+            isError = emailError != null,
+            supportingText = { emailError?.let { Text(text = it) } }
+        )
+        Spacer(Modifier.height(8.dp))
+
+        // Phone Field
+        OutlinedTextField(
+            value = phone,
+            onValueChange = { phone = it; phoneError = null },
+            label = { Text("Phone Number") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth(),
+            isError = phoneError != null,
+            supportingText = { phoneError?.let { Text(text = it) } }
+        )
+        Spacer(Modifier.height(16.dp))
+
+        // Booking Information Section
+        Text(
+            "Booking Information",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(8.dp))
+
+        // Date Field
         OutlinedTextField(
             value = date,
             onValueChange = { date = it; dateError = null },
-            label = { Text("Tanggal (YYYY-MM-DD)") },
+            label = { Text("Select Date (YYYY-MM-DD)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),
             isError = dateError != null,
             supportingText = { dateError?.let { Text(text = it) } }
         )
+        Spacer(Modifier.height(8.dp))
 
-        // Field Waktu
-        OutlinedTextField(
-            value = time,
-            onValueChange = { time = it; timeError = null },
-            label = { Text("Waktu (HH:MM:SS)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        // Time Fields (Start and End)
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            isError = timeError != null,
-            supportingText = { timeError?.let { Text(text = it) } }
-        )
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = startTime,
+                onValueChange = { startTime = it; startTimeError = null },
+                label = { Text("Start Time (HH:MM:SS)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+                isError = startTimeError != null,
+                supportingText = { startTimeError?.let { Text(text = it) } }
+            )
 
-        // Field Olahraga
+            OutlinedTextField(
+                value = endTime,
+                onValueChange = { endTime = it; endTimeError = null },
+                label = { Text("End Time (HH:MM:SS)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+                isError = endTimeError != null,
+                supportingText = { endTimeError?.let { Text(text = it) } }
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+
+        // Sport Type Field
         OutlinedTextField(
             value = sport,
             onValueChange = { sport = it; sportError = null },
@@ -384,14 +475,37 @@ fun BookingFormScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = {
-                    // Reset error
+                    // Reset all errors
                     dateError = null
-                    timeError = null
+                    startTimeError = null
+                    endTimeError = null
                     sportError = null
+                    fullNameError = null
+                    emailError = null
+                    phoneError = null
 
                     var hasError = false
 
-                    // Validasi Tanggal
+                    // Validate Personal Information
+                    if (fullName.isBlank()) {
+                        fullNameError = "Wajib diisi"
+                        hasError = true
+                    }
+
+                    if (email.isBlank()) {
+                        emailError = "Wajib diisi"
+                        hasError = true
+                    } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                        emailError = "Format email tidak valid"
+                        hasError = true
+                    }
+
+                    if (phone.isBlank()) {
+                        phoneError = "Wajib diisi"
+                        hasError = true
+                    }
+
+                    // Validate Date
                     if (date.isBlank()) {
                         dateError = "Wajib diisi"
                         hasError = true
@@ -408,20 +522,39 @@ fun BookingFormScreen(
                         }
                     }
 
-                    // Validasi Waktu
-                    if (time.isBlank()) {
-                        timeError = "Wajib diisi"
+                    // Validate Start Time
+                    if (startTime.isBlank()) {
+                        startTimeError = "Wajib diisi"
                         hasError = true
                     } else {
                         try {
-                            LocalTime.parse(time, DateTimeFormatter.ISO_TIME)
+                            LocalTime.parse(startTime, DateTimeFormatter.ISO_TIME)
                         } catch (e: DateTimeParseException) {
-                            timeError = "Format tidak valid"
+                            startTimeError = "Format tidak valid"
                             hasError = true
                         }
                     }
 
-                    // Validasi Olahraga
+                    // Validate End Time
+                    if (endTime.isBlank()) {
+                        endTimeError = "Wajib diisi"
+                        hasError = true
+                    } else {
+                        try {
+                            val startLocalTime = LocalTime.parse(startTime, DateTimeFormatter.ISO_TIME)
+                            val endLocalTime = LocalTime.parse(endTime, DateTimeFormatter.ISO_TIME)
+
+                            if (!endLocalTime.isAfter(startLocalTime)) {
+                                endTimeError = "Harus setelah waktu mulai"
+                                hasError = true
+                            }
+                        } catch (e: DateTimeParseException) {
+                            endTimeError = "Format tidak valid"
+                            hasError = true
+                        }
+                    }
+
+                    // Validate Sport Type
                     if (sport.isBlank()) {
                         sportError = "Wajib diisi"
                         hasError = true
@@ -430,12 +563,15 @@ fun BookingFormScreen(
                     if (hasError) return@Button
 
                     try {
-                        val dt = LocalDateTime.parse("${date}T${time}")
-                        if (dt.isBefore(LocalDateTime.now())) {
+                        val startDateTime = LocalDateTime.parse("${date}T${startTime}")
+                        val endDateTime = LocalDateTime.parse("${date}T${endTime}")
+
+                        if (startDateTime.isBefore(LocalDateTime.now())) {
                             Toast.makeText(context, "Waktu tidak boleh di masa lalu", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
-                        onBook(date, time, sport)
+
+                        onBook(date, startTime, endTime, sport, fullName, email, phone)
                     } catch (e: Exception) {
                         Toast.makeText(context, "Waktu tidak valid", Toast.LENGTH_SHORT).show()
                     }
