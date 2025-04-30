@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
@@ -98,7 +99,7 @@ fun SportApp(vm: SportViewModel = viewModel()) {
                                 Icon(
                                     imageVector = when (screen) {
                                         Screen.Book -> Icons.Filled.Home
-                                        Screen.History -> Icons.Filled.List
+                                        Screen.History -> Icons.Filled.DateRange
                                     },
                                     contentDescription = screen.title
                                 )
@@ -200,14 +201,36 @@ fun SportApp(vm: SportViewModel = viewModel()) {
             }
 
             composable("history") {
-                BookingHistoryScreen(bookings = bookings)
+                BookingHistoryScreen(
+                    bookings = bookings,
+                    onBookingClick = { bookingId ->
+                        navController.navigate("booking-detail/$bookingId")
+                    }
+                )
+            }
+
+            composable(
+                "booking-detail/{bookingId}",
+                arguments = listOf(navArgument("bookingId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val bookingId = backStackEntry.arguments?.getString("bookingId")?.toLongOrNull()
+                val booking = bookings.find { it.id == bookingId }
+
+                if (booking != null) {
+                    BookingDetailScreen(
+                        booking = booking,
+                        onBack = { navController.popBackStack() }
+                    )
+                } else {
+                    ErrorScreen("Pemesanan tidak ditemukan")
+                }
             }
         }
     }
 }
 
 @Composable
-fun BookingHistoryScreen(bookings: List<Booking>) {
+fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit = {}) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             "Riwayat Pemesanan",
@@ -229,7 +252,10 @@ fun BookingHistoryScreen(bookings: List<Booking>) {
         } else {
             LazyColumn {
                 items(bookings.sortedByDescending { it.dateTime }) { booking ->
-                    BookingHistoryItem(booking)
+                    BookingHistoryItem(
+                        booking = booking,
+                        onClick = { onBookingClick(booking.id) }
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -238,11 +264,12 @@ fun BookingHistoryScreen(bookings: List<Booking>) {
 }
 
 @Composable
-fun BookingHistoryItem(booking: Booking) {
+fun BookingHistoryItem(booking: Booking, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
+        onClick = onClick
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -319,6 +346,58 @@ fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Kembali ke Daftar Venue")
+        }
+    }
+}
+
+@Composable
+fun BookingDetailScreen(booking: Booking, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.align(Alignment.Start)
+        ) {
+            Icon(Icons.Filled.Home, contentDescription = "Back")
+        }
+
+        Text(
+            "Detail Pemesanan",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                DetailItem("Venue", booking.venue.name)
+                DetailItem("Lokasi", booking.venue.location)
+                DetailItem("Alamat", booking.venue.address)
+                DetailItem("Jenis Olahraga", booking.sportType)
+                DetailItem("Tanggal", booking.dateTime.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")))
+                DetailItem("Waktu", "${booking.dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${booking.endDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
+                DetailItem("Harga per jam", "Rp ${booking.venue.pricePerHour}.000")
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                DetailItem("Nama Pemesan", booking.fullName)
+                DetailItem("Email", booking.email)
+                DetailItem("Telepon", booking.phone)
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Kembali")
         }
     }
 }
