@@ -35,6 +35,9 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeParseException
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 sealed class Screen(val route: String, val title: String) {
     object Book : Screen("book", "Book")
@@ -43,18 +46,45 @@ sealed class Screen(val route: String, val title: String) {
 
 @Composable
 fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
+    var searchQuery by remember { mutableStateOf("") }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Pilih Tempat Olahraga", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
+
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Cari venue...") },
+            leadingIcon = {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = "Search"
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+
+        val filteredVenues = venues.filter {
+            it.name.contains(searchQuery.trim(), ignoreCase = true) ||
+                    it.location.contains(searchQuery.trim(), ignoreCase = true) ||
+                    it.address.contains(searchQuery.trim(), ignoreCase = true)
+        }
+
         LazyColumn {
-            items(venues) { venue ->
+            items(filteredVenues) { venue ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
                     onClick = { onSelect(venue) }
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                )
+                {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(
                             model = venue.imageRes,
                             contentDescription = venue.name,
@@ -231,6 +261,7 @@ fun SportApp(vm: SportViewModel = viewModel()) {
 
 @Composable
 fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit = {}) {
+    var searchQuery by remember { mutableStateOf("") }
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             "Riwayat Pemesanan",
@@ -238,7 +269,26 @@ fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        if (bookings.isEmpty()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Cari pesanan...") },
+            leadingIcon = {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = "Search"
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+
+        val filteredBookings = bookings.filter {
+            it.venue.name.contains(searchQuery.trim(), ignoreCase = true) ||
+                    it.sportType.contains(searchQuery.trim(), ignoreCase = true)
+        }
+
+        if (filteredBookings.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -251,7 +301,7 @@ fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit
             }
         } else {
             LazyColumn {
-                items(bookings.sortedByDescending { it.dateTime }) { booking ->
+                items(filteredBookings) { booking ->
                     BookingHistoryItem(
                         booking = booking,
                         onClick = { onBookingClick(booking.id) }

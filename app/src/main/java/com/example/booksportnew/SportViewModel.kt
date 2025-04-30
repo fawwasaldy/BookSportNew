@@ -50,7 +50,7 @@ class SportViewModel : ViewModel() {
                 id = 1,
                 name = "Futsal Arena",
                 imageRes = R.drawable.futsal_court,
-                location = "Jakarta Pusat",
+                location = "Jl. Kebon Sirih No. 23, Jakarta Pusat",
                 address = "Jl. Kebon Sirih No. 23, Jakarta Pusat",
                 pricePerHour = 150
             ),
@@ -58,7 +58,7 @@ class SportViewModel : ViewModel() {
                 id = 2,
                 name = "Badminton Court",
                 imageRes = R.drawable.badminton_court,
-                location = "Jakarta Selatan",
+                location = "Jl. Sisingamangaraja No. 45, Kebayoran Baru, Jakarta Selatan",
                 address = "Jl. Sisingamangaraja No. 45, Kebayoran Baru, Jakarta Selatan",
                 pricePerHour = 100
             ),
@@ -66,7 +66,7 @@ class SportViewModel : ViewModel() {
                 id = 3,
                 name = "Basketball Hall",
                 imageRes = R.drawable.basketball_hall,
-                location = "Jakarta Barat",
+                location = "Jl. Panjang No. 102, Kedoya, Jakarta Barat",
                 address = "Jl. Panjang No. 102, Kedoya, Jakarta Barat",
                 pricePerHour = 200
             ),
@@ -74,7 +74,7 @@ class SportViewModel : ViewModel() {
                 id = 4,
                 name = "Tennis Court",
                 imageRes = R.drawable.tennis_court,
-                location = "Jakarta Utara",
+                location = "Jl. Pluit Raya No. 77, Pluit, Jakarta Utara",
                 address = "Jl. Pluit Raya No. 77, Pluit, Jakarta Utara",
                 pricePerHour = 180
             ),
@@ -82,7 +82,7 @@ class SportViewModel : ViewModel() {
                 id = 5,
                 name = "Swimming Pool",
                 imageRes = R.drawable.swimming_pool,
-                location = "Jakarta Timur",
+                location = "Jl. Raya Bogor Km. 25, Ciracas, Jakarta Timur",
                 address = "Jl. Raya Bogor Km. 25, Ciracas, Jakarta Timur",
                 pricePerHour = 75
             )
