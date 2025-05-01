@@ -14,7 +14,7 @@ class SportViewModel : ViewModel() {
     private val _bookings = MutableStateFlow<List<Booking>>(emptyList())
     val bookings: StateFlow<List<Booking>> = _bookings
 
-    private var nextBookingId = 0L
+    private var nextBookingId = 1L
 
     fun addBooking(
         venue: SportVenue,

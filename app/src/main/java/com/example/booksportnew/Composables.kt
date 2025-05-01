@@ -372,6 +372,10 @@ fun BookingHistoryItem(booking: Booking, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
+                    "ID Pemesanan: ${booking.id}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
                     "Pemesan: ${booking.fullName}",
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -411,6 +415,7 @@ fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Detail Pemesanan", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(16.dp))
+                DetailItem("ID Pemesanan", booking.id.toString())
                 DetailItem("Venue", booking.venue.name)
                 DetailItem("Lokasi", booking.venue.location)
                 DetailItem("Olahraga", booking.sportType)
@@ -470,6 +475,7 @@ fun BookingDetailScreen(booking: Booking, onBack: () -> Unit) {
                 .padding(vertical = 8.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                DetailItem("ID Pemesanan", booking.id.toString())
                 DetailItem("Venue", booking.venue.name)
                 DetailItem("Lokasi", booking.venue.location)
                 DetailItem("Alamat", booking.venue.address)
