@@ -52,7 +52,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.futsal_court,
                 location = "Jl. Gelora Bung Karno, Senayan, Jakarta",
                 address = "Gedung Pusat Olahraga Lt. 3, Komplek GBK",
-                pricePerHour = 250
+                pricePerHour = 150
             ),
             SportVenue(
                 id = 2,
@@ -60,7 +60,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.badminton_court,
                 location = "Jl. HR Rasuna Said Kav. X-1, Jakarta Selatan",
                 address = "Kuningan City Mall Lt. 5, Tower A",
-                pricePerHour = 150
+                pricePerHour = 80
             ),
             SportVenue(
                 id = 3,
@@ -68,7 +68,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.basketball_hall,
                 location = "Jl. Jend. Sudirman Kav. 52-53, Jakarta",
                 address = "Pacific Place Mall Lt. Roof Top",
-                pricePerHour = 350
+                pricePerHour = 250
             ),
             SportVenue(
                 id = 4,
@@ -76,7 +76,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.tennis_court,
                 location = "Jl. Metro Pondok Indah, Jakarta Selatan",
                 address = "Blok III-B No. 15, Komplek Pondok Indah Sport Club",
-                pricePerHour = 400
+                pricePerHour = 200
             ),
             SportVenue(
                 id = 5,
@@ -84,7 +84,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.swimming_pool,
                 location = "Jl. Gelora Bung Karno, Senayan, Jakarta",
                 address = "Komplek Senayan Aquatic Center Lt. 1",
-                pricePerHour = 200
+                pricePerHour = 100
             ),
             SportVenue(
                 id = 6,
@@ -108,7 +108,7 @@ class SportViewModel : ViewModel() {
                     imageRes = R.drawable.badminton_court1,
                 location = "Jl. MH Thamrin No. 10, Jakarta Pusat",
                 address = "Plaza Senayan Lt. 5",
-                pricePerHour = 250
+                pricePerHour = 150
             ),
             SportVenue(
                 id = 9,
@@ -116,7 +116,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.climbing_wall,
                 location = "Jl. Sudirman Kav. 52-53, Jakarta",
                 address = "SCBD Lot 28",
-                pricePerHour = 300
+                pricePerHour = 200
             ),
             SportVenue(
                 id = 10,
@@ -132,7 +132,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.athletic_field,
                 location = "Gelora Bung Karno, Jakarta",
                 address = "Komplek Gelora Bung Karno Senayan",
-                pricePerHour = 500
+                pricePerHour = 75
             ),
             SportVenue(
                 id = 12,
@@ -148,7 +148,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.swimming_pool1,
                 location = "Jl. Asia Afrika No. 8, Bandung",
                 address = "Gedung Sate Complex",
-                pricePerHour = 150
+                pricePerHour = 100
             ),
             SportVenue(
                 id = 14,
@@ -172,7 +172,7 @@ class SportViewModel : ViewModel() {
                 imageRes = R.drawable.swimming_pool2,
                 location = "Jl. Raya Bekasi Km 22, Jakarta Timur",
                 address = "Komplek Cibubur Sport Arena Blok D-5",
-                pricePerHour = 180
+                pricePerHour = 120
             )
         )
     }

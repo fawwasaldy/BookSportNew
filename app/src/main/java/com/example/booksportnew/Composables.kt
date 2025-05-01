@@ -38,6 +38,7 @@ import java.time.format.DateTimeParseException
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import java.time.Duration
 
 sealed class Screen(val route: String, val title: String) {
     object Book : Screen("book", "Book")
@@ -74,16 +75,18 @@ fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
                     it.location.contains(searchQuery.trim(), ignoreCase = true) ||
                     it.address.contains(searchQuery.trim(), ignoreCase = true)
         }
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-            LazyColumn {
+        Box(modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(filteredVenues) { venue ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(horizontal = 4.dp),
                         onClick = { onSelect(venue) }
-                    )
-                    {
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             AsyncImage(
                                 model = venue.imageRes,
@@ -95,6 +98,12 @@ fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text(venue.name, style = MaterialTheme.typography.bodyLarge)
                                 Text(venue.location, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    text = "Rp ${venue.pricePerHour}.000/jam",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
                             }
                         }
                     }
@@ -287,8 +296,9 @@ fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit
 
         val filteredBookings = bookings.filter {
             it.venue.name.contains(searchQuery.trim(), ignoreCase = true) ||
-                    it.sportType.contains(searchQuery.trim(), ignoreCase = true)
-        }
+                    it.sportType.contains(searchQuery.trim(), ignoreCase = true) ||
+                    it.fullName.contains(searchQuery.trim(), ignoreCase = true)
+        }.sortedByDescending { it.dateTime }
         Box(modifier = Modifier.weight(1f).fillMaxSize()) {
             if (filteredBookings.isEmpty()) {
                 Box(
@@ -302,13 +312,15 @@ fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit
                     )
                 }
             } else {
-                LazyColumn {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ){
                     items(filteredBookings) { booking ->
                         BookingHistoryItem(
                             booking = booking,
                             onClick = { onBookingClick(booking.id) }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
@@ -321,7 +333,8 @@ fun BookingHistoryItem(booking: Booking, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        onClick = onClick
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -343,7 +356,7 @@ fun BookingHistoryItem(booking: Booking, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "Lokasi: ${booking.venue.location}",
+                    "Pemesan: ${booking.fullName}",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
@@ -351,11 +364,7 @@ fun BookingHistoryItem(booking: Booking, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
-                    "Waktu: ${booking.dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${booking.endDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    "Nama: ${booking.fullName}",
+                    "Waktu: ${booking.dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${booking.endDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -365,6 +374,10 @@ fun BookingHistoryItem(booking: Booking, onClick: () -> Unit) {
 
 @Composable
 fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
+    val duration = Duration.between(booking.dateTime, booking.endDateTime)
+    val hours = duration.toMinutes() / 60.0
+    val totalPrice = (hours * booking.venue.pricePerHour).toInt()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -387,7 +400,15 @@ fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
                 DetailItem("Olahraga", booking.sportType)
                 DetailItem(
                     "Waktu",
-                    booking.dateTime.format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))
+                    booking.dateTime.format(DateTimeFormatter.ofPattern(("dd MMM yyyy HH:mm")) )
+                )
+                DetailItem(
+                    "Durasi",
+                    "${"%.1f".format(hours)} jam"
+                )
+                DetailItem(
+                    "Total Harga",
+                    "Rp $totalPrice.000"
                 )
             }
         }
@@ -404,6 +425,10 @@ fun ConfirmationScreen(booking: Booking, onDismiss: () -> Unit) {
 
 @Composable
 fun BookingDetailScreen(booking: Booking, onBack: () -> Unit) {
+    val duration = Duration.between(booking.dateTime, booking.endDateTime)
+    val hours = duration.toMinutes() / 60.0
+    val totalPrice = (hours * booking.venue.pricePerHour).toInt()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -435,11 +460,18 @@ fun BookingDetailScreen(booking: Booking, onBack: () -> Unit) {
                 DetailItem("Jenis Olahraga", booking.sportType)
                 DetailItem("Tanggal", booking.dateTime.format(DateTimeFormatter.ofPattern("dd MMMM yyyy")))
                 DetailItem("Waktu", "${booking.dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${booking.endDateTime.format(DateTimeFormatter.ofPattern("HH:mm"))}")
-                DetailItem("Harga per jam", "Rp ${booking.venue.pricePerHour}.000")
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
                 DetailItem("Nama Pemesan", booking.fullName)
                 DetailItem("Email", booking.email)
                 DetailItem("Telepon", booking.phone)
+                DetailItem(
+                    "Durasi",
+                    "${"%.1f".format(hours)} jam"
+                )
+                DetailItem(
+                    "Total Harga",
+                    "Rp $totalPrice.000"
+                )
             }
         }
 
@@ -500,6 +532,13 @@ fun BookingFormScreen(
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Pesan: ${venue.name}", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(16.dp))
+
+        Text(
+            "Harga: Rp ${venue.pricePerHour}.000/jam",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
         // Personal Information Section
         Text(
