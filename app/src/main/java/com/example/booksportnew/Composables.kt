@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,8 +35,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeParseException
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import java.time.Duration
 
 sealed class Screen(val route: String, val title: String) {
@@ -46,12 +43,35 @@ sealed class Screen(val route: String, val title: String) {
 }
 
 @Composable
+fun HeaderBar() {
+    NavigationBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 8.dp
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "SportArena",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Black
+                )
+            )
+        }
+    }
+}
+
+@Composable
 fun VenueListScreen(venues: List<SportVenue>, onSelect: (SportVenue) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Pilih Tempat Olahraga", style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(8.dp))
+        HeaderBar()
 
         // Search Bar
         OutlinedTextField(
@@ -274,11 +294,7 @@ fun BookingHistoryScreen(bookings: List<Booking>, onBookingClick: (Long) -> Unit
     var searchQuery by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            "Riwayat Pemesanan",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        HeaderBar()
 
         OutlinedTextField(
             value = searchQuery,
